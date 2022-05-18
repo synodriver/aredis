@@ -95,14 +95,11 @@ class ConnectionPool:
 
         for name, value in iter(parse_qs(qs).items()):
             if value and len(value) > 0:
-                parser = URL_QUERY_ARGUMENT_PARSERS.get(name)
-                if parser:
+                if parser := URL_QUERY_ARGUMENT_PARSERS.get(name):
                     try:
                         url_options[name] = parser(value[0])
                     except (TypeError, ValueError):
-                        warnings.warn(UserWarning(
-                            "Invalid value for `%s` in connection URL." % name
-                        ))
+                        warnings.warn(UserWarning(f"Invalid value for `{name}` in connection URL."))
                 else:
                     url_options[name] = value[0]
 
@@ -119,20 +116,22 @@ class ConnectionPool:
 
         # We only support redis:// and unix:// schemes.
         if url.scheme == 'unix':
-            url_options.update({
+            url_options |= {
                 'username': username,
                 'password': password,
                 'path': path,
                 'connection_class': UnixDomainSocketConnection,
-            })
+            }
+
 
         else:
-            url_options.update({
+            url_options |= {
                 'host': hostname,
                 'port': int(url.port or 6379),
                 'username': username,
                 'password': password,
-            })
+            }
+
 
             # If there's a path argument, use it as the db argument if a
             # querystring value wasn't specified
@@ -183,10 +182,7 @@ class ConnectionPool:
         self.reset()
 
     def __repr__(self):
-        return '{}<{}>'.format(
-            type(self).__name__,
-            self.connection_class.description.format(**self.connection_kwargs),
-        )
+        return f'{type(self).__name__}<{self.connection_class.description.format(**self.connection_kwargs)}>'
 
     async def disconnect_on_idle_time_exceeded(self, connection):
         while True:
@@ -284,12 +280,15 @@ class ClusterConnectionPool(ConnectionPool):
         # Special case to make from_url method compliant with cluster setting.
         # from_url method will send in the ip and port through a different variable then the
         # regular startup_nodes variable.
-        if startup_nodes is None:
-            if 'port' in connection_kwargs and 'host' in connection_kwargs:
-                startup_nodes = [{
-                    'host': connection_kwargs.pop('host'),
-                    'port': str(connection_kwargs.pop('port')),
-                }]
+        if (
+            startup_nodes is None
+            and 'port' in connection_kwargs
+            and 'host' in connection_kwargs
+        ):
+            startup_nodes = [{
+                'host': connection_kwargs.pop('host'),
+                'port': str(connection_kwargs.pop('port')),
+            }]
 
         self.max_connections = max_connections or 2 ** 31
         self.max_connections_per_node = max_connections_per_node
@@ -425,8 +424,6 @@ class ClusterConnectionPool(ConnectionPool):
         i_c = self._in_use_connections.get(connection.node["name"], set())
         if connection in i_c:
             i_c.remove(connection)
-        else:
-            pass
         # discard connection with unread response
         if connection.awaiting_response:
             connection.disconnect()
@@ -451,20 +448,16 @@ class ClusterConnectionPool(ConnectionPool):
         if self.max_connections_per_node:
             return self._created_connections_per_node.get(node['name'], 0)
 
-        return sum([i for i in self._created_connections_per_node.values()])
+        return sum(list(self._created_connections_per_node.values()))
 
     def get_random_connection(self):
         """Opens new connection to random redis server"""
         if self._available_connections:
             node_name = random.choice(list(self._available_connections.keys()))
-            conn_list = self._available_connections[node_name]
-            # check it in case of empty connection list
-            if conn_list:
+            if conn_list := self._available_connections[node_name]:
                 return conn_list.pop()
         for node in self.nodes.random_startup_node_iter():
-            connection = self.get_connection_by_node(node)
-
-            if connection:
+            if connection := self.get_connection_by_node(node):
                 return connection
 
         raise Exception("Cant reach a single startup node.")

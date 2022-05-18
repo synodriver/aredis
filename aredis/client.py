@@ -120,16 +120,15 @@ class StrictRedis(*mixins):
             }
             # based on input, setup appropriate connection args
             if unix_socket_path is not None:
-                kwargs.update({
+                kwargs |= {
                     'path': unix_socket_path,
-                    'connection_class': UnixDomainSocketConnection
-                })
+                    'connection_class': UnixDomainSocketConnection,
+                }
+
             else:
                 # TCP specific options
-                kwargs.update({
-                    'host': host,
-                    'port': port
-                })
+                kwargs |= {'host': host, 'port': port}
+
                 if ssl_context is not None:
                     kwargs['ssl_context'] = ssl_context
                 elif ssl:
@@ -142,7 +141,7 @@ class StrictRedis(*mixins):
         self.response_callbacks = self.__class__.RESPONSE_CALLBACKS.copy()
 
     def __repr__(self):
-        return "{}<{}>".format(type(self).__name__, repr(self.connection_pool))
+        return f"{type(self).__name__}<{repr(self.connection_pool)}>"
 
     def set_response_callback(self, command, callback):
         """Sets a custom Response Callback"""
@@ -245,7 +244,7 @@ class StrictRedisCluster(StrictRedis, *cluster_mixins):
 
             # Support host/port as argument
             if host:
-                startup_nodes.append({"host": host, "port": port if port else 7000})
+                startup_nodes.append({"host": host, "port": port or 7000})
             pool = ClusterConnectionPool(
                 startup_nodes=startup_nodes,
                 max_connections=max_connections,
@@ -290,9 +289,13 @@ class StrictRedisCluster(StrictRedis, *cluster_mixins):
         return cls(connection_pool=connection_pool)
 
     def __repr__(self):
-        servers = list({'{0}:{1}'.format(info['host'], info['port'])
-                        for info in self.connection_pool.nodes.startup_nodes})
-        servers.sort()
+        servers = sorted(
+            {
+                '{0}:{1}'.format(info['host'], info['port'])
+                for info in self.connection_pool.nodes.startup_nodes
+            }
+        )
+
         return "{0}<{1}>".format(type(self).__name__, ', '.join(servers))
 
     def set_result_callback(self, command, callback):
@@ -355,8 +358,7 @@ class StrictRedisCluster(StrictRedis, *cluster_mixins):
             # `slot_id` should is assumed in kwargs
             slot = kwargs.get('slot_id')
             if not slot:
-                raise RedisClusterException('slot_id is needed to execute command {}'
-                                            .format(command))
+                raise RedisClusterException(f'slot_id is needed to execute command {command}')
             return [self.connection_pool.nodes.node_from_slot(slot)]
         else:
             return None
@@ -373,8 +375,7 @@ class StrictRedisCluster(StrictRedis, *cluster_mixins):
 
         command = args[0]
 
-        node = self.determine_node(*args, **kwargs)
-        if node:
+        if node := self.determine_node(*args, **kwargs):
             return await self.execute_command_on_nodes(node, *args, **kwargs)
 
         # If set externally we must update it before calling any commands

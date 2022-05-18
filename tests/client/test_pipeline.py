@@ -251,7 +251,7 @@ class TestPipeline:
 
     @pytest.mark.asyncio(forbid_global_loop=True)
     async def test_exec_error_in_no_transaction_pipeline_unicode_command(self, r):
-        key = chr(11) + 'abcd' + chr(23)
+        key = f'{chr(11)}abcd{chr(23)}'
         await r.set(key, 1)
         async with await r.pipeline(transaction=False) as pipe:
             await pipe.llen(key)

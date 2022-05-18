@@ -24,11 +24,11 @@ class TestConnectionPool:
     def get_pool(self, connection_kwargs=None, max_connections=None,
                  connection_class=DummyConnection):
         connection_kwargs = connection_kwargs or {}
-        pool = aredis.ConnectionPool(
+        return aredis.ConnectionPool(
             connection_class=connection_class,
             max_connections=max_connections,
-            **connection_kwargs)
-        return pool
+            **connection_kwargs
+        )
 
     def test_connection_creation(self):
         connection_kwargs = {'foo': 'bar', 'biz': 'baz'}

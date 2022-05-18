@@ -35,10 +35,7 @@ class ListsCommandMixin:
         """
         if timeout is None:
             timeout = 0
-        if isinstance(keys, str):
-            keys = [keys]
-        else:
-            keys = list(keys)
+        keys = [keys] if isinstance(keys, str) else list(keys)
         keys.append(timeout)
         return await self.execute_command('BLPOP', *keys)
 
@@ -55,10 +52,7 @@ class ListsCommandMixin:
         """
         if timeout is None:
             timeout = 0
-        if isinstance(keys, str):
-            keys = [keys]
-        else:
-            keys = list(keys)
+        keys = [keys] if isinstance(keys, str) else list(keys)
         keys.append(timeout)
         return await self.execute_command('BRPOP', *keys)
 
@@ -267,7 +261,7 @@ class ClusterListsCommandMixin(ListsCommandMixin):
                 data.sort()
             if desc:
                 data = data[::-1]
-            if not (start is None and num is None):
+            if start is not None or num is not None:
                 data = data[start:start + num]
 
             if get:
@@ -285,15 +279,14 @@ class ClusterListsCommandMixin(ListsCommandMixin):
 
                 return len(data)
 
-            if groups:
-                if not get or isinstance(get, str) or len(get) < 2:
-                    raise DataError('when using "groups" the "get" argument '
-                                    'must be specified and contain at least '
-                                    'two keys')
-                n = len(get)
-                return list(zip(*[data[i::n] for i in range(n)]))
-            else:
+            if not groups:
                 return data
+            if not get or isinstance(get, str) or len(get) < 2:
+                raise DataError('when using "groups" the "get" argument '
+                                'must be specified and contain at least '
+                                'two keys')
+            n = len(get)
+            return list(zip(*[data[i::n] for i in range(n)]))
         except KeyError:
             return []
 
@@ -350,15 +343,11 @@ class ClusterListsCommandMixin(ListsCommandMixin):
                 arg = arg.decode("utf-8")
 
             key = by.replace('*', arg)
-            if '->' in by:
-                key, hash_key = key.split('->')
-                v = await self.hget(key, hash_key)
-                if alpha:
-                    return v
-                else:
-                    return float(v)
-            else:
+            if '->' not in by:
                 return await self.get(key)
+            key, hash_key = key.split('->')
+            v = await self.hget(key, hash_key)
+            return v if alpha else float(v)
         sorted_data = []
         for d in data:
             sorted_data.append((d, await _by_key(d)))

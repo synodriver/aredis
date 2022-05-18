@@ -15,9 +15,9 @@ async def func2():
     cluster = StrictRedisCluster(startup_nodes=[{'host': '127.0.0.1', 'port': 7001}], decode_responses=True)
     while True:
         foobar = int(await cluster.get('foobar'))
-        print('thread: get `foobar` = {}'.format(foobar))
+        print(f'thread: get `foobar` = {foobar}')
         if foobar >= 0:
-            print('thread: cluster get foobar == {}, decrease it'.format(foobar))
+            print(f'thread: cluster get foobar == {foobar}, decrease it')
             await cluster.decr('foobar', 1)
         if foobar < 0:
             print('thread: break loop now')
@@ -32,7 +32,7 @@ async def run_func1():
         await cluster.transaction(func1, 'foobar', watch_delay=2)
     except Exception as exc:
         print(exc)
-    print('after transaction: `foobar` = {}'.format(await cluster.get('foobar')))
+    print(f"after transaction: `foobar` = {await cluster.get('foobar')}")
     print('wait for thread to end...')
     await asyncio.sleep(1)
 

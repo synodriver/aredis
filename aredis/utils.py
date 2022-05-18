@@ -15,7 +15,7 @@ LOOP_DEPRECATED = sys.version_info >= (3, 8)
 
 
 def b(x):
-    return x.encode('latin-1') if not isinstance(x, bytes) else x
+    return x if isinstance(x, bytes) else x.encode('latin-1')
 
 
 def nativestr(x):
@@ -42,9 +42,9 @@ def ban_python_version_lt(min_version):
         def _inner(*args, **kwargs):
             if sys.version_info[:2] < min_version:
                 raise EnvironmentError(
-                    '{} not supported in Python version less than {}'
-                        .format(func.__name__, min_version)
+                    f'{func.__name__} not supported in Python version less than {min_version}'
                 )
+
             else:
                 return func(*args, **kwargs)
 
@@ -80,7 +80,7 @@ def list_keys_to_dict(key_list, callback):
 def dict_merge(*dicts):
     merged = {}
     for d in dicts:
-        merged.update(d)
+        merged |= d
     return merged
 
 
@@ -104,9 +104,7 @@ def list_or_args(keys, args):
 
 
 def int_or_none(response):
-    if response is None:
-        return None
-    return int(response)
+    return None if response is None else int(response)
 
 
 def pairs_to_dict(response):
@@ -171,7 +169,7 @@ def clusterdown_wrapper(func):
 
     @wraps(func)
     async def inner(*args, **kwargs):
-        for _ in range(0, 3):
+        for _ in range(3):
             try:
                 return await func(*args, **kwargs)
             except ClusterDownError:

@@ -79,8 +79,7 @@ class SocketBuffer:
                 break
         except socket.error:
             e = sys.exc_info()[1]
-            raise ConnectionError("Error while reading from socket: %s" %
-                                  (e.args,))
+            raise ConnectionError(f"Error while reading from socket: {e.args}")
 
     async def read(self, length):
         length = length + 2  # make sure to read the \r\n terminator
@@ -214,11 +213,22 @@ class PythonParser(BaseParser):
         byte, response = chr(response[0]), response[1:]
 
         if byte not in ('-', '+', ':', '$', '*'):
-            raise InvalidResponse("Protocol Error: %s, %s" %
-                                  (str(byte), str(response)))
+            raise InvalidResponse(f"Protocol Error: {byte}, {str(response)}")
 
         # server returned an error
-        if byte == '-':
+        if byte == '$':
+            length = int(response)
+            if length == -1:
+                return None
+            response = await self._buffer.read(length)
+        elif byte == '*':
+            length = int(response)
+            if length == -1:
+                return None
+            response = []
+            for _ in range(length):
+                response.append(await self.read_response())
+        elif byte == '-':
             response = response.decode()
             error = self.parse_error(response)
             # if the error is a ConnectionError, raise immediately so the user
@@ -230,26 +240,8 @@ class PythonParser(BaseParser):
             # and/or the pipeline's execute() will raise this error if
             # necessary, so just return the exception instance here.
             return error
-        # single value
-        elif byte == '+':
-            pass
-        # int value
         elif byte == ':':
             response = int(response)
-        # bulk response
-        elif byte == '$':
-            length = int(response)
-            if length == -1:
-                return None
-            response = await self._buffer.read(length)
-        # multi-bulk response
-        elif byte == '*':
-            length = int(response)
-            if length == -1:
-                return None
-            response = []
-            for i in range(length):
-                response.append(await self.read_response())
         if isinstance(response, bytes) and self.encoding:
             response = response.decode(self.encoding)
         return response
@@ -310,13 +302,11 @@ class HiredisParser(BaseParser):
         while response is False:
             try:
                 buffer = await self._stream.read(self._read_size)
-            # CancelledError will be caught by client so that command won't be retried again
-            # For more detailed discussion please see https://github.com/NoneGG/aredis/issues/56
             except aredis.compat.CancelledError:
                 raise
             except Exception:
                 e = sys.exc_info()[1]
-                raise ConnectionError("Error {} while reading from stream: {}".format(type(e), e.args))
+                raise ConnectionError(f"Error {type(e)} while reading from stream: {e.args}")
             if not buffer:
                 raise ConnectionError("Socket closed on remote end")
             self._reader.feed(buffer)
@@ -326,10 +316,7 @@ class HiredisParser(BaseParser):
         return response
 
 
-if HIREDIS_AVAILABLE:
-    DefaultParser = HiredisParser
-else:
-    DefaultParser = PythonParser
+DefaultParser = HiredisParser if HIREDIS_AVAILABLE else PythonParser
 
 
 class RedisSSLContext:
@@ -346,9 +333,7 @@ class RedisSSLContext:
                 'required': ssl.CERT_REQUIRED
             }
             if cert_reqs not in CERT_REQS:
-                raise RedisError(
-                    "Invalid SSL Certificate Requirements Flag: %s" %
-                    cert_reqs)
+                raise RedisError(f"Invalid SSL Certificate Requirements Flag: {cert_reqs}")
             self.cert_reqs = CERT_REQS[cert_reqs]
         self.ca_certs = ca_certs
         self.context = None
@@ -384,8 +369,8 @@ class BaseConnection:
         self.db = ''
         self.pid = os.getpid()
         self.retry_on_timeout = retry_on_timeout
-        self._description_args = dict()
-        self._connect_callbacks = list()
+        self._description_args = {}
+        self._connect_callbacks = []
         self.encoding = encoding
         self.decode_responses = decode_responses
         self.loop = loop
@@ -411,7 +396,7 @@ class BaseConnection:
         self._connect_callbacks.append(callback)
 
     def clear_connect_callbacks(self):
-        self._connect_callbacks = list()
+        self._connect_callbacks = []
 
     async def can_read(self):
         """Checks for data that can be read"""
@@ -426,7 +411,7 @@ class BaseConnection:
             raise
         except Exception as e:
             e = sys.exc_info()[1]
-            raise ConnectionError("Error during initial connection: %s" % (e.args,))
+            raise ConnectionError(f"Error during initial connection: {e.args}")
         # run any user callbacks. right now the only internal callback
         # is for pubsub channel/pattern resubscription
         for callback in self._connect_callbacks:
@@ -463,7 +448,7 @@ class BaseConnection:
         if self.client_name is not None:
             await self.send_command('CLIENT SETNAME', self.client_name)
             if nativestr(await self.read_response()) != 'OK':
-                raise ConnectionError('Failed to set client name: {}'.format(self.client_name))
+                raise ConnectionError(f'Failed to set client name: {self.client_name}')
         self.last_active_at = time.time()
 
     async def read_response(self):
@@ -497,11 +482,7 @@ class BaseConnection:
             else:
                 errno = e.args[0]
                 errmsg = e.args[1]
-            raise ConnectionError("Error %s while writing to socket. %s." %
-                                  (errno, errmsg))
-        except:
-            self.disconnect()
-            raise
+            raise ConnectionError(f"Error {errno} while writing to socket. {errmsg}.")
 
     async def send_command(self, *args):
         if not self.is_connected:
@@ -544,7 +525,7 @@ class BaseConnection:
         # to prevent them from being encoded.
         command = args[0]
         if ' ' in command:
-            args = tuple([b(s) for s in command.split()]) + args[1:]
+            args = tuple(b(s) for s in command.split()) + args[1:]
         else:
             args = (b(command),) + args[1:]
 
@@ -556,8 +537,7 @@ class BaseConnection:
             if len(buff) > 6000 or len(arg) > 6000:
                 buff = SYM_EMPTY.join(
                     (buff, SYM_DOLLAR, b(str(len(arg))), SYM_CRLF))
-                output.append(buff)
-                output.append(b(arg))
+                output.extend((buff, b(arg)))
                 buff = SYM_CRLF
             else:
                 buff = SYM_EMPTY.join((buff, SYM_DOLLAR, b(str(len(arg))),

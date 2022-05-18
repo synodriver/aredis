@@ -25,12 +25,8 @@ class SentinelManagedConnection(Connection):
 
     def __repr__(self):
         pool = self.connection_pool
-        if self.host:
-            host_info = ',host=%s,port=%s' % (self.host, self.port)
-        else:
-            host_info = ''
-        s = '{}<service={}{}>'.format(type(self).__name__, pool.service_name, host_info)
-        return s
+        host_info = f',host={self.host},port={self.port}' if self.host else ''
+        return f'{type(self).__name__}<service={pool.service_name}{host_info}>'
 
     async def connect_to(self, address):
         self.host, self.port = address
@@ -87,11 +83,7 @@ class SentinelConnectionPool(ConnectionPool):
         self.sentinel_manager = sentinel_manager
 
     def __repr__(self):
-        return "{}<service={}({})".format(
-            type(self).__name__,
-            self.service_name,
-            self.is_master and 'master' or 'slave',
-        )
+        return f"{type(self).__name__}<service={self.service_name}({self.is_master and 'master' or 'slave'})"
 
     def reset(self):
         super(SentinelConnectionPool, self).reset()
@@ -112,10 +104,10 @@ class SentinelConnectionPool(ConnectionPool):
     async def rotate_slaves(self):
         """Round-robin slave balancer"""
         slaves = await self.sentinel_manager.discover_slaves(self.service_name)
-        slave_address = list()
         if slaves:
             if self.slave_rr_counter is None:
                 self.slave_rr_counter = random.randint(0, len(slaves) - 1)
+            slave_address = []
             for _ in range(len(slaves)):
                 self.slave_rr_counter = (self.slave_rr_counter + 1) % len(slaves)
                 slave_address.append(slaves[self.slave_rr_counter])
@@ -185,15 +177,12 @@ class Sentinel:
         self.connection_kwargs = connection_kwargs
 
     def __repr__(self):
-        sentinel_addresses = []
-        for sentinel in self.sentinels:
-            sentinel_addresses.append('{}:{}'.format(
-                sentinel.connection_pool.connection_kwargs['host'],
-                sentinel.connection_pool.connection_kwargs['port'],
-            ))
-        return '{}<sentinels=[{}]>'.format(
-            type(self).__name__,
-            ','.join(sentinel_addresses))
+        sentinel_addresses = [
+            f"{sentinel.connection_pool.connection_kwargs['host']}:{sentinel.connection_pool.connection_kwargs['port']}"
+            for sentinel in self.sentinels
+        ]
+
+        return f"{type(self).__name__}<sentinels=[{','.join(sentinel_addresses)}]>"
 
     def check_master_state(self, state, service_name):
         if not state['is_master'] or state['is_sdown'] or state['is_odown']:
@@ -226,12 +215,11 @@ class Sentinel:
 
     def filter_slaves(self, slaves):
         """Removes slaves that are in an ODOWN or SDOWN state"""
-        slaves_alive = []
-        for slave in slaves:
-            if slave['is_odown'] or slave['is_sdown']:
-                continue
-            slaves_alive.append((slave['ip'], slave['port']))
-        return slaves_alive
+        return [
+            (slave['ip'], slave['port'])
+            for slave in slaves
+            if not slave['is_odown'] and not slave['is_sdown']
+        ]
 
     async def discover_slaves(self, service_name):
         """Returns a list of alive slaves for service ``service_name``"""
@@ -240,8 +228,7 @@ class Sentinel:
                 slaves = await sentinel.sentinel_slaves(service_name)
             except (ConnectionError, ResponseError, TimeoutError):
                 continue
-            slaves = self.filter_slaves(slaves)
-            if slaves:
+            if slaves := self.filter_slaves(slaves):
                 return slaves
         return []
 
@@ -269,7 +256,7 @@ class Sentinel:
         """
         kwargs['is_master'] = True
         connection_kwargs = dict(self.connection_kwargs)
-        connection_kwargs.update(kwargs)
+        connection_kwargs |= kwargs
         return redis_class(connection_pool=connection_pool_class(
             service_name, self, **connection_kwargs))
 
@@ -294,6 +281,6 @@ class Sentinel:
         """
         kwargs['is_master'] = False
         connection_kwargs = dict(self.connection_kwargs)
-        connection_kwargs.update(kwargs)
+        connection_kwargs |= kwargs
         return redis_class(connection_pool=connection_pool_class(
             service_name, self, **connection_kwargs))

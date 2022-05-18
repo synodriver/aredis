@@ -38,7 +38,7 @@ class TestStreams:
     @pytest.mark.asyncio(forbid_global_loop=True)
     async def test_xadd_with_maxlen_accurately(self, r):
         await r.flushdb()
-        for idx in range(10):
+        for _ in range(10):
             await r.xadd('test_stream', {'k1': 'v1', 'k2': 1}, max_len=2, approximate=False)
         # also test xlen here
         length = await r.xlen('test_stream')
@@ -48,7 +48,7 @@ class TestStreams:
     @pytest.mark.asyncio(forbid_global_loop=True)
     async def test_xadd_with_maxlen_approximately(self, r):
         await r.flushdb()
-        for idx in range(10):
+        for _ in range(10):
             await r.xadd('test_stream', {'k1': 'v1', 'k2': 1}, max_len=2, approximate=True)
         length = await r.xlen('test_stream')
         assert length == 10

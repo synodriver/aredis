@@ -44,8 +44,9 @@ def make_subscribe_test_data(pubsub, type):
             'unsub_type': 'unsubscribe',
             'sub_func': pubsub.subscribe,
             'unsub_func': pubsub.unsubscribe,
-            'keys': ['foo', 'bar', 'uni' + chr(56) + 'code', ]
+            'keys': ['foo', 'bar', f'uni{chr(56)}code'],
         }
+
     elif type == 'pattern':
         return {
             'p': pubsub,
@@ -53,9 +54,10 @@ def make_subscribe_test_data(pubsub, type):
             'unsub_type': 'punsubscribe',
             'sub_func': pubsub.psubscribe,
             'unsub_func': pubsub.punsubscribe,
-            'keys': ['f*', 'b*', 'uni' + chr(56) + '*']
+            'keys': ['f*', 'b*', f'uni{chr(56)}*'],
         }
-    assert False, 'invalid subscribe type: %s' % type
+
+    assert False, f'invalid subscribe type: {type}'
 
 
 class TestPubSubSubscribeUnsubscribe:
@@ -327,7 +329,7 @@ class TestPubSubMessages:
     @pytest.mark.asyncio(forbid_global_loop=True)
     async def test_unicode_channel_message_handler(self, r):
         p = r.pubsub(ignore_subscribe_messages=True)
-        channel = 'uni' + chr(56) + 'code'
+        channel = f'uni{chr(56)}code'
         channels = {channel: self.message_handler}
         await p.subscribe(**channels)
         assert await r.publish(channel, 'test message') == 1
@@ -338,8 +340,8 @@ class TestPubSubMessages:
     @pytest.mark.asyncio(forbid_global_loop=True)
     async def test_unicode_pattern_message_handler(self, r):
         p = r.pubsub(ignore_subscribe_messages=True)
-        pattern = 'uni' + chr(56) + '*'
-        channel = 'uni' + chr(56) + 'code'
+        pattern = f'uni{chr(56)}*'
+        channel = f'uni{chr(56)}code'
         await p.psubscribe(**{pattern: self.message_handler})
         assert await r.publish(channel, 'test message') == 1
         assert await wait_for_message(p) is None

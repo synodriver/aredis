@@ -122,11 +122,7 @@ class Lock:
             await asyncio.sleep(sleep, loop=self.redis.connection_pool.loop)
 
     async def do_acquire(self, token):
-        if self.timeout:
-            # convert to milliseconds
-            timeout = int(self.timeout * 1000)
-        else:
-            timeout = None
+        timeout = int(self.timeout * 1000) if self.timeout else None
         return await self.redis.set(self.name, token, nx=True, px=timeout)
 
     async def release(self):
@@ -303,7 +299,10 @@ class ClusterLock(LuaLock):
                 if count >= quorum:
                     return True
             except Exception as exc:
-                warnings.warn('error {} during check lock {} status in slave nodes'.format(exc, self.name))
+                warnings.warn(
+                    f'error {exc} during check lock {self.name} status in slave nodes'
+                )
+
         return False
 
     async def acquire(self, blocking=None, blocking_timeout=None):

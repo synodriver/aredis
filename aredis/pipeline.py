@@ -229,9 +229,13 @@ class BasePipeline:
                 raise r
 
     def annotate_exception(self, exception, number, command):
-        cmd = str(' ').join(map(str, command))
-        msg = str('Command # %d (%s) of pipeline caused error: %s') % (
-            number, cmd, str(exception.args[0]))
+        cmd = ' '.join(map(str, command))
+        msg = 'Command # %d (%s) of pipeline caused error: %s' % (
+            number,
+            cmd,
+            str(exception.args[0]),
+        )
+
         exception.args = (msg,) + exception.args[1:]
 
     async def _parse(self, connection, command_name, **options):
@@ -326,7 +330,7 @@ class StrictClusterPipeline(StrictRedisCluster):
         self.refresh_table_asap = False
         self.connection_pool = connection_pool
         self.result_callbacks = result_callbacks or self.__class__.RESULT_CALLBACKS.copy()
-        self.startup_nodes = startup_nodes if startup_nodes else []
+        self.startup_nodes = startup_nodes or []
         self.nodes_flags = self.__class__.NODES_FLAGS.copy()
         self.response_callbacks = dict_merge(response_callbacks or self.__class__.RESPONSE_CALLBACKS.copy())
         self.transaction = transaction
@@ -429,10 +433,8 @@ class StrictClusterPipeline(StrictRedisCluster):
 
             # now that we know the name of the node ( it's just a string in the form of host:port )
             # we can build a list of commands for each node.
-            if node.get('name') != hashed_node['name']:
-                # raise error if commands in a transaction can not hash to same node
-                if len(node) > 0:
-                    raise ClusterTransactionError("Keys in request don't hash to the same node")
+            if node.get('name') != hashed_node['name'] and len(node) > 0:
+                raise ClusterTransactionError("Keys in request don't hash to the same node")
             node = hashed_node
         conn = self.connection_pool.get_connection_by_node(node)
         if self.watches:
@@ -579,10 +581,8 @@ class StrictClusterPipeline(StrictRedisCluster):
         for name in names:
             slot = self._determine_slot('WATCH', name)
             dist_node = self.connection_pool.get_node_by_slot(slot)
-            if node.get('name') != dist_node['name']:
-                # raise error if commands in a transaction can not hash to same node
-                if len(node) > 0:
-                    raise ClusterTransactionError("Keys in request don't hash to the same node")
+            if node.get('name') != dist_node['name'] and len(node) > 0:
+                raise ClusterTransactionError("Keys in request don't hash to the same node")
         if self.explicit_transaction:
             raise RedisError('Cannot issue a WATCH after a MULTI')
         await conn.send_command('WATCH', *names)
@@ -750,10 +750,7 @@ class NodeCommands:
             # explicitly open the connection and all will be well.
             if c.result is None:
                 try:
-                    if self.in_transaction:
-                        cmd = '_'
-                    else:
-                        cmd = c.args[0]
+                    cmd = '_' if self.in_transaction else c.args[0]
                     c.result = await self.parse_response(connection, cmd, **c.options)
                 except ExecAbortError:
                     raise

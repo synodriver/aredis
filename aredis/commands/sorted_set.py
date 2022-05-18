@@ -12,9 +12,7 @@ VALID_ZADD_OPTIONS = {'NX', 'XX', 'CH', 'INCR'}
 
 
 def float_or_none(response):
-    if response is None:
-        return None
-    return float(response)
+    return None if response is None else float(response)
 
 
 def zset_score_pairs(response, **options):
@@ -74,8 +72,7 @@ class SortedSetCommandMixin:
                                  "values and scores")
             pieces.extend(args)
         for pair in iteritems(kwargs):
-            pieces.append(pair[1])
-            pieces.append(pair[0])
+            pieces.extend((pair[1], pair[0]))
         return await self.execute_command('ZADD', name, *pieces)
 
     async def zaddoption(self, name, option=None, *args, **kwargs):
@@ -90,7 +87,7 @@ class SortedSetCommandMixin:
         """
         if not option:
             raise RedisError("ZADDOPTION must take options")
-        options = set(opt.upper() for opt in option.split())
+        options = {opt.upper() for opt in option.split()}
         if options - VALID_ZADD_OPTIONS:
             raise RedisError("ZADD only takes XX, NX, CH, or INCR")
         if 'NX' in options and 'XX' in options:
@@ -103,8 +100,7 @@ class SortedSetCommandMixin:
                                  "values and scores")
             members.extend(args)
         for pair in iteritems(kwargs):
-            members.append(pair[1])
-            members.append(pair[0])
+            members.extend((pair[1], pair[0]))
         if 'INCR' in options and len(members) != 2:
             raise RedisError("ZADD with INCR only takes one score-name pair")
         return await self.execute_command('ZADD', name, *pieces, *members)
@@ -180,7 +176,7 @@ class SortedSetCommandMixin:
                 (num is not None and start is None):
             raise RedisError("``start`` and ``num`` must both be specified")
         pieces = ['ZRANGEBYLEX', name, min, max]
-        if start is not None and num is not None:
+        if start is not None:
             pieces.extend([b('LIMIT'), start, num])
         return await self.execute_command(*pieces)
 
@@ -196,7 +192,7 @@ class SortedSetCommandMixin:
                 (num is not None and start is None):
             raise RedisError("``start`` and ``num`` must both be specified")
         pieces = ['ZREVRANGEBYLEX', name, max, min]
-        if start is not None and num is not None:
+        if start is not None:
             pieces.extend([b('LIMIT'), start, num])
         return await self.execute_command(*pieces)
 
@@ -218,7 +214,7 @@ class SortedSetCommandMixin:
                 (num is not None and start is None):
             raise RedisError("``start`` and ``num`` must both be specified")
         pieces = ['ZRANGEBYSCORE', name, min, max]
-        if start is not None and num is not None:
+        if start is not None:
             pieces.extend([b('LIMIT'), start, num])
         if withscores:
             pieces.append(b('WITHSCORES'))
@@ -304,7 +300,7 @@ class SortedSetCommandMixin:
                 (num is not None and start is None):
             raise RedisError("``start`` and ``num`` must both be specified")
         pieces = ['ZREVRANGEBYSCORE', name, max, min]
-        if start is not None and num is not None:
+        if start is not None:
             pieces.extend([b('LIMIT'), start, num])
         if withscores:
             pieces.append(b('WITHSCORES'))

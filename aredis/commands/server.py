@@ -18,11 +18,10 @@ def parse_slowlog_get(response, **options):
 
 
 def parse_client_list(response, **options):
-    clients = []
-    for c in nativestr(response).splitlines():
-        # Values might contain '='
-        clients.append(dict([pair.split('=', 1) for pair in c.split(' ')]))
-    return clients
+    return [
+        dict([pair.split('=', 1) for pair in c.split(' ')])
+        for c in nativestr(response).splitlines()
+    ]
 
 
 def parse_config_get(response, **options):
@@ -48,7 +47,7 @@ def parse_debug_object(response):
     # The 'type' of the object is the first item in the response, but isn't
     # prefixed with a name
     response = nativestr(response)
-    response = 'type:' + response
+    response = f'type:{response}'
     response = dict([kv.split(':') for kv in response.split()])
 
     # parse some expected int values from the string response
@@ -69,10 +68,7 @@ def parse_info(response):
     def get_value(value):
         if ',' not in value or '=' not in value:
             try:
-                if '.' in value:
-                    return float(value)
-                else:
-                    return int(value)
+                return float(value) if '.' in value else int(value)
             except ValueError:
                 return value
         else:

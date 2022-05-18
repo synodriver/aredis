@@ -50,7 +50,7 @@ class ClusterHyperLogCommandMixin(HyperLogCommandMixin):
         all_k = []
 
         # Fetch all HLL objects via GET and store them client side as strings
-        all_hll_objects = list()
+        all_hll_objects = []
         for hll_key in sources:
             all_hll_objects.append(await self.get(hll_key))
 
@@ -90,8 +90,7 @@ class ClusterHyperLogCommandMixin(HyperLogCommandMixin):
         """
         Generate a good random key with a low probability of collision between any other key.
         """
-        random_id = "{{0}}{1}".format(hashslot, self._random_id())
-        return random_id
+        return "{{0}}{1}".format(hashslot, self._random_id())
 
     def _random_id(self, size=16, chars=string.ascii_uppercase + string.digits):
         """

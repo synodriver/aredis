@@ -19,7 +19,7 @@ from .conftest import (skip_if_server_version_lt,
 
 async def redis_server_time(client):
     seconds, milliseconds = await client.time()
-    timestamp = float('%s.%s' % (seconds, milliseconds))
+    timestamp = float(f'{seconds}.{milliseconds}')
     return datetime.datetime.fromtimestamp(timestamp)
 
 
@@ -451,7 +451,7 @@ class TestRedisCommands:
         assert await r.get('a') is None
         byte_string = b('value')
         integer = 5
-        unicode_string = chr(33) + 'abcd' + chr(22)
+        unicode_string = f'{chr(33)}abcd{chr(22)}'
         assert await r.set('byte_string', byte_string)
         assert await r.set('integer', 5)
         assert await r.set('unicode_string', unicode_string)
@@ -516,7 +516,7 @@ class TestRedisCommands:
         assert await r.incrbyfloat('a') == 1.0
         assert await r.get('a') == b('1')
         assert await r.incrbyfloat('a', 1.1) == 2.1
-        assert float(await r.get('a')) == float(2.1)
+        assert float(await r.get('a')) == 2.1
 
     @pytest.mark.asyncio(forbid_global_loop=True)
     async def test_keys(self, r):
@@ -968,9 +968,9 @@ class TestRedisCommands:
         await r.set('c', 3)
         cursor, keys = await r.scan()
         assert cursor == 0
-        assert set(keys) == set([b('a'), b('b'), b('c')])
+        assert set(keys) == {b('a'), b('b'), b('c')}
         _, keys = await r.scan(match='a')
-        assert set(keys) == set([b('a')])
+        assert set(keys) == {b('a')}
 
     @skip_if_server_version_lt('2.8.0')
     @skip_python_vsersion_lt('3.6')
@@ -983,7 +983,7 @@ class TestRedisCommands:
         keys = set()
         async for key in r.scan_iter():
             keys.add(key)
-        assert keys == set([b('a'), b('b'), b('c')])
+        assert keys == {b('a'), b('b'), b('c')}
         async for key in r.scan_iter(match='a'):
             assert key == b('a')
 
@@ -994,9 +994,9 @@ class TestRedisCommands:
         await r.sadd('a', 1, 2, 3)
         cursor, members = await r.sscan('a')
         assert cursor == 0
-        assert set(members) == set([b('1'), b('2'), b('3')])
+        assert set(members) == {b('1'), b('2'), b('3')}
         _, members = await r.sscan('a', match=b('1'))
-        assert set(members) == set([b('1')])
+        assert set(members) == {b('1')}
 
     @skip_if_server_version_lt('2.8.0')
     @skip_python_vsersion_lt('3.6')
@@ -1007,7 +1007,7 @@ class TestRedisCommands:
         members = set()
         async for member in r.sscan_iter('a'):
             members.add(member)
-        assert members == set([b('1'), b('2'), b('3')])
+        assert members == {b('1'), b('2'), b('3')}
         async for member in r.sscan_iter('a', match=b('1')):
             assert member == b('1')
 
@@ -1028,9 +1028,9 @@ class TestRedisCommands:
     async def test_hscan_iter(self, r):
         await r.flushdb()
         await r.hmset('a', {'a': 1, 'b': 2, 'c': 3})
-        dic = dict()
+        dic = {}
         async for data in r.hscan_iter('a'):
-            dic.update(dict([data]))
+            dic |= dict([data])
         assert dic == {b('a'): b('1'), b('b'): b('2'), b('c'): b('3')}
         async for data in r.hscan_iter('a', match='a'):
             assert dict([data]) == {b('a'): b('1')}
@@ -1042,9 +1042,9 @@ class TestRedisCommands:
         await r.zadd('a', 1, 'a', 2, 'b', 3, 'c')
         cursor, pairs = await r.zscan('a')
         assert cursor == 0
-        assert set(pairs) == set([(b('a'), 1), (b('b'), 2), (b('c'), 3)])
+        assert set(pairs) == {(b('a'), 1), (b('b'), 2), (b('c'), 3)}
         _, pairs = await r.zscan('a', match='a')
-        assert set(pairs) == set([(b('a'), 1)])
+        assert set(pairs) == {(b('a'), 1)}
 
     @skip_if_server_version_lt('2.8.0')
     @skip_python_vsersion_lt('3.6')
@@ -1054,7 +1054,7 @@ class TestRedisCommands:
         pairs = set()
         async for pair in r.zscan_iter('a'):
             pairs.add(pair)
-        assert pairs == set([(b('a'), 1), (b('b'), 2), (b('c'), 3)])
+        assert pairs == {(b('a'), 1), (b('b'), 2), (b('c'), 3)}
         async for pair in r.zscan_iter('a', match='a'):
             assert pair == (b('a'), 1)
 
@@ -1062,7 +1062,7 @@ class TestRedisCommands:
     @pytest.mark.asyncio(forbid_global_loop=True)
     async def test_sadd(self, r):
         await r.flushdb()
-        members = set([b('1'), b('2'), b('3')])
+        members = {b('1'), b('2'), b('3')}
         await r.sadd('a', *members)
         assert await r.smembers('a') == members
 
@@ -1076,19 +1076,19 @@ class TestRedisCommands:
     async def test_sdiff(self, r):
         await r.flushdb()
         await r.sadd('a', '1', '2', '3')
-        assert await r.sdiff('a', 'b') == set([b('1'), b('2'), b('3')])
+        assert await r.sdiff('a', 'b') == {b('1'), b('2'), b('3')}
         await r.sadd('b', '2', '3')
-        assert await r.sdiff('a', 'b') == set([b('1')])
+        assert await r.sdiff('a', 'b') == {b('1')}
 
     @pytest.mark.asyncio(forbid_global_loop=True)
     async def test_sdiffstore(self, r):
         await r.flushdb()
         await r.sadd('a', '1', '2', '3')
         assert await r.sdiffstore('c', 'a', 'b') == 3
-        assert await r.smembers('c') == set([b('1'), b('2'), b('3')])
+        assert await r.smembers('c') == {b('1'), b('2'), b('3')}
         await r.sadd('b', '2', '3')
         assert await r.sdiffstore('c', 'a', 'b') == 1
-        assert await r.smembers('c') == set([b('1')])
+        assert await r.smembers('c') == {b('1')}
 
     @pytest.mark.asyncio(forbid_global_loop=True)
     async def test_sinter(self, r):
@@ -1096,7 +1096,7 @@ class TestRedisCommands:
         await r.sadd('a', '1', '2', '3')
         assert await r.sinter('a', 'b') == set()
         await r.sadd('b', '2', '3')
-        assert await r.sinter('a', 'b') == set([b('2'), b('3')])
+        assert await r.sinter('a', 'b') == {b('2'), b('3')}
 
     @pytest.mark.asyncio(forbid_global_loop=True)
     async def test_sinterstore(self, r):
@@ -1106,7 +1106,7 @@ class TestRedisCommands:
         assert await r.smembers('c') == set()
         await r.sadd('b', '2', '3')
         assert await r.sinterstore('c', 'a', 'b') == 2
-        assert await r.smembers('c') == set([b('2'), b('3')])
+        assert await r.smembers('c') == {b('2'), b('3')}
 
     @pytest.mark.asyncio(forbid_global_loop=True)
     async def test_sismember(self, r):
@@ -1121,7 +1121,7 @@ class TestRedisCommands:
     async def test_smembers(self, r):
         await r.flushdb()
         await r.sadd('a', '1', '2', '3')
-        assert await r.smembers('a') == set([b('1'), b('2'), b('3')])
+        assert await r.smembers('a') == {b('1'), b('2'), b('3')}
 
     @pytest.mark.asyncio(forbid_global_loop=True)
     async def test_smove(self, r):
@@ -1129,8 +1129,8 @@ class TestRedisCommands:
         await r.sadd('a', 'a1', 'a2')
         await r.sadd('b', 'b1', 'b2')
         assert await r.smove('a', 'b', 'a1')
-        assert await r.smembers('a') == set([b('a2')])
-        assert await r.smembers('b') == set([b('b1'), b('b2'), b('a1')])
+        assert await r.smembers('a') == {b('a2')}
+        assert await r.smembers('b') == {b('b1'), b('b2'), b('a1')}
 
     @pytest.mark.asyncio(forbid_global_loop=True)
     async def test_spop(self, r):
@@ -1138,7 +1138,7 @@ class TestRedisCommands:
         s = [b('1'), b('2'), b('3')]
         await r.sadd('a', *s)
         value = await r.spop('a')
-        assert set(await r.smembers('a')) == set(s) - set([value])
+        assert set(await r.smembers('a')) == set(s) - {value}
 
     @skip_if_server_version_lt('3.2.0')
     @pytest.mark.asyncio(forbid_global_loop=True)
@@ -1172,14 +1172,14 @@ class TestRedisCommands:
         await r.sadd('a', '1', '2', '3', '4')
         assert await r.srem('a', '5') == 0
         assert await r.srem('a', '2', '4') == 2
-        assert await r.smembers('a') == set([b('1'), b('3')])
+        assert await r.smembers('a') == {b('1'), b('3')}
 
     @pytest.mark.asyncio(forbid_global_loop=True)
     async def test_sunion(self, r):
         await r.flushdb()
         await r.sadd('a', '1', '2')
         await r.sadd('b', '2', '3')
-        assert await r.sunion('a', 'b') == set([b('1'), b('2'), b('3')])
+        assert await r.sunion('a', 'b') == {b('1'), b('2'), b('3')}
 
     @pytest.mark.asyncio(forbid_global_loop=True)
     async def test_sunionstore(self, r):
@@ -1187,7 +1187,7 @@ class TestRedisCommands:
         await r.sadd('a', '1', '2')
         await r.sadd('b', '2', '3')
         assert await r.sunionstore('c', 'a', 'b') == 3
-        assert await r.smembers('c') == set([b('1'), b('2'), b('3')])
+        assert await r.smembers('c') == {b('1'), b('2'), b('3')}
 
     # SORTED SET COMMANDS
     @pytest.mark.asyncio(forbid_global_loop=True)
@@ -1498,7 +1498,7 @@ class TestRedisCommands:
     @pytest.mark.asyncio(forbid_global_loop=True)
     async def test_pfadd(self, r):
         await r.flushdb()
-        members = set([b('1'), b('2'), b('3')])
+        members = {b('1'), b('2'), b('3')}
         assert await r.pfadd('a', *members) == 1
         assert await r.pfadd('a', *members) == 0
         assert await r.pfcount('a') == len(members)
@@ -1507,10 +1507,10 @@ class TestRedisCommands:
     @pytest.mark.asyncio(forbid_global_loop=True)
     async def test_pfcount(self, r):
         await r.flushdb()
-        members = set([b('1'), b('2'), b('3')])
+        members = {b('1'), b('2'), b('3')}
         await r.pfadd('a', *members)
         assert await r.pfcount('a') == len(members)
-        members_b = set([b('2'), b('3'), b('4')])
+        members_b = {b('2'), b('3'), b('4')}
         await r.pfadd('b', *members_b)
         assert await r.pfcount('b') == len(members_b)
         assert await r.pfcount('a', 'b') == len(members_b.union(members))
@@ -1519,9 +1519,9 @@ class TestRedisCommands:
     @pytest.mark.asyncio(forbid_global_loop=True)
     async def test_pfmerge(self, r):
         await r.flushdb()
-        mema = set([b('1'), b('2'), b('3')])
-        memb = set([b('2'), b('3'), b('4')])
-        memc = set([b('5'), b('6'), b('7')])
+        mema = {b('1'), b('2'), b('3')}
+        memb = {b('2'), b('3'), b('4')}
+        memc = {b('5'), b('6'), b('7')}
         await r.pfadd('a', *mema)
         await r.pfadd('b', *memb)
         await r.pfadd('c', *memc)

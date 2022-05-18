@@ -13,8 +13,8 @@ _REDIS_VERSIONS = {}
 
 async def get_version(**kwargs):
     params = {'host': 'localhost', 'port': 6379, 'db': 0}
-    params.update(kwargs)
-    key = '%s:%s' % (params['host'], params['port'])
+    params |= kwargs
+    key = f"{params['host']}:{params['port']}"
     if key not in _REDIS_VERSIONS:
         client = aredis.StrictRedis(**params)
         _REDIS_VERSIONS[key] = (await client.info())['redis_version']
@@ -48,8 +48,7 @@ class AsyncMock(Mock):
     def __await__(self):
         future = asyncio.Future(loop=self.loop)
         future.set_result(self)
-        result = yield from future
-        return result
+        return (yield from future)
 
     @staticmethod
     def pack_response(response, *, loop):

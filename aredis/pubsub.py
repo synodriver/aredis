@@ -154,7 +154,7 @@ class PubSub:
         if args:
             args = list_or_args(args[0], args[1:])
         new_patterns = {}
-        new_patterns.update(dict.fromkeys(map(self.encode, args)))
+        new_patterns |= dict.fromkeys(map(self.encode, args))
         for pattern, handler in iteritems(kwargs):
             new_patterns[self.encode(pattern)] = handler
         ret_val = await self.execute_command('PSUBSCRIBE', *iterkeys(new_patterns))
@@ -184,7 +184,7 @@ class PubSub:
         if args:
             args = list_or_args(args[0], args[1:])
         new_channels = {}
-        new_channels.update(dict.fromkeys(map(self.encode, args)))
+        new_channels |= dict.fromkeys(map(self.encode, args))
         for channel, handler in iteritems(kwargs):
             new_channels[self.encode(channel)] = handler
         ret_val = await self.execute_command('SUBSCRIBE', *iterkeys(new_channels))
@@ -260,30 +260,27 @@ class PubSub:
         if message_type in self.PUBLISH_MESSAGE_TYPES:
             # if there's a message handler, invoke it
             handler = None
-            if message_type == 'pmessage':
-                handler = self.patterns.get(message['pattern'], None)
-            else:
-                handler = self.channels.get(message['channel'], None)
+            handler = (
+                self.patterns.get(message['pattern'], None)
+                if message_type == 'pmessage'
+                else self.channels.get(message['channel'], None)
+            )
+
             if handler:
                 handler(message)
                 return None
-        else:
-            # this is a subscribe/unsubscribe message. ignore if we don't
-            # want them
-            if ignore_subscribe_messages or self.ignore_subscribe_messages:
-                return None
+        elif ignore_subscribe_messages or self.ignore_subscribe_messages:
+            return None
 
         return message
 
     def run_in_thread(self, daemon=False, poll_timeout=1.0):
         for channel, handler in iteritems(self.channels):
             if handler is None:
-                raise PubSubError("Channel: '{}' has no handler registered"
-                                  .format(channel))
+                raise PubSubError(f"Channel: '{channel}' has no handler registered")
         for pattern, handler in iteritems(self.patterns):
             if handler is None:
-                raise PubSubError("Pattern: '{}' has no handler registered"
-                                  .format(pattern))
+                raise PubSubError(f"Pattern: '{pattern}' has no handler registered")
         thread = PubSubWorkerThread(self, daemon=daemon,
                                     poll_timeout=poll_timeout)
         thread.start()

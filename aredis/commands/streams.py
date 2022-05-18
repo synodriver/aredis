@@ -8,7 +8,7 @@ def stream_list(response):
     if response:
         for r in response:
             kv_pairs = r[1]
-            kv_dict = dict()
+            kv_dict = {}
             while kv_pairs and len(kv_pairs) > 1:
                 kv_dict[kv_pairs.pop()] = kv_pairs.pop()
             result.append((r[0], kv_dict))
@@ -16,7 +16,7 @@ def stream_list(response):
 
 
 def multi_stream_list(response):
-    result = dict()
+    result = {}
     if response:
         for r in response:
             result[r[0]] = stream_list(r[1])
@@ -191,13 +191,11 @@ class StreamsCommandMixin:
         if block is not None:
             if not isinstance(block, int) or block < 0:
                 raise RedisError("XREAD block must be a positive integer")
-            pieces.append("BLOCK")
-            pieces.append(str(block))
+            pieces.extend(("BLOCK", str(block)))
         if count is not None:
             if not isinstance(count, int) or count < 1:
                 raise RedisError("XREAD count must be a positive integer")
-            pieces.append("COUNT")
-            pieces.append(str(count))
+            pieces.extend(("COUNT", str(count)))
         pieces.append("STREAMS")
         ids = []
         for partial_stream in streams.items():
@@ -236,13 +234,11 @@ class StreamsCommandMixin:
         if block is not None:
             if not isinstance(block, int) or block < 1:
                 raise RedisError("XREAD block must be a positive integer")
-            pieces.append("BLOCK")
-            pieces.append(str(block))
+            pieces.extend(("BLOCK", str(block)))
         if count is not None:
             if not isinstance(count, int) or count < 1:
                 raise RedisError("XREAD count must be a positive integer")
-            pieces.append("COUNT")
-            pieces.append(str(count))
+            pieces.extend(("COUNT", str(count)))
         pieces.append("STREAMS")
         ids = []
         for partial_stream in streams.items():

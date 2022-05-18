@@ -7,7 +7,7 @@ from aredis.utils import (dict_merge,
 
 
 def parse_pubsub_numsub(response, **options):
-    return list(zip(response[0::2], response[1::2]))
+    return list(zip(response[::2], response[1::2]))
 
 
 class PubSubCommandMixin:
@@ -71,10 +71,7 @@ def parse_cluster_pubsub_numpat(res, **options):
     if not aggregate:
         return res
 
-    numpat = 0
-    for node, node_numpat in res.items():
-        numpat += node_numpat
-    return numpat
+    return sum(node_numpat for node, node_numpat in res.items())
 
 
 def parse_cluster_pubsub_numsub(res, **options):
@@ -86,7 +83,7 @@ def parse_cluster_pubsub_numsub(res, **options):
     if not aggregate:
         return res
 
-    numsub_d = dict()
+    numsub_d = {}
     for _, numsub_tups in res.items():
         for channel, numsubbed in numsub_tups:
             try:
@@ -94,10 +91,7 @@ def parse_cluster_pubsub_numsub(res, **options):
             except KeyError:
                 numsub_d[channel] = numsubbed
 
-    ret_numsub = []
-    for channel, numsub in numsub_d.items():
-        ret_numsub.append((channel, numsub))
-    return ret_numsub
+    return list(numsub_d.items())
 
 
 

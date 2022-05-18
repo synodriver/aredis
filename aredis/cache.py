@@ -38,8 +38,7 @@ class IdentityGenerator:
         md5 = hashlib.md5()
         md5.update(content)
         hash = md5.hexdigest()
-        identity = self.TEMPLATE.format(app=self.app, key=key, content=hash)
-        return identity
+        return self.TEMPLATE.format(app=self.app, key=key, content=hash)
 
 
 class Compressor:
@@ -62,7 +61,7 @@ class Compressor:
         elif isinstance(content, float):
             content = b(repr(content))
         if not isinstance(content, bytes):
-            raise TypeError('Wrong data type({}) to compress'.format(type(content)))
+            raise TypeError(f'Wrong data type({type(content)}) to compress')
         return content
 
     def compress(self, content):
@@ -95,7 +94,7 @@ class Serializer:
         if isinstance(content, bytes):
             content = content.decode(self.encoding)
         if not isinstance(content, str):
-            raise TypeError('Wrong data type({}) to compress'.format(type(content)))
+            raise TypeError(f'Wrong data type({type(content)}) to compress')
         return content
 
     def serialize(self, content):
@@ -129,19 +128,17 @@ class BasicCache:
             self.serializer = serializer_class(encoding)
 
     def __repr__(self):
-        return "{}<{}>".format(type(self).__name__, repr(self.client))
+        return f"{type(self).__name__}<{repr(self.client)}>"
 
     def _gen_identity(self, key, param=None):
         """generate identity according to key and param given"""
-        if self.identity_generator and param is not None:
-            if self.serializer:
-                param = self.serializer.serialize(param)
-            if self.compressor:
-                param = self.compressor.compress(param)
-            identity = self.identity_generator.generate(key, param)
-        else:
-            identity = key
-        return identity
+        if not self.identity_generator or param is None:
+            return key
+        if self.serializer:
+            param = self.serializer.serialize(param)
+        if self.compressor:
+            param = self.compressor.compress(param)
+        return self.identity_generator.generate(key, param)
 
     def _pack(self, content):
         """Packs the content using serializer and compressor"""

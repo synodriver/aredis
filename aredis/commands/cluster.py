@@ -82,7 +82,7 @@ def parse_cluster_nodes(resp, **options):
 
 
 def parse_cluster_slots(response):
-    res = dict()
+    res = {}
     for slot_info in response:
         min_slot, max_slot = slot_info[:2]
         nodes = slot_info[2:]
@@ -186,7 +186,7 @@ class ClusterCommandMixin:
         Returns a list of the results for each processed slot.
         """
         cluster_nodes = self._nodes_slots_to_slots_nodes(await self.cluster_nodes())
-        res = list()
+        res = []
         for slot in slots:
             res.append(await self.execute_command('CLUSTER DELSLOTS', slot, node_id=cluster_nodes[slot]))
         return res
@@ -272,7 +272,7 @@ class ClusterCommandMixin:
         Sends to all nodes in the cluster
         """
         option = 'SOFT' if soft else 'HARD'
-        res = list()
+        res = []
         for node in await self.cluster_nodes():
             res.append(
                 await self.execute_command(

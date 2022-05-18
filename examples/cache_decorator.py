@@ -13,7 +13,7 @@ def cached(app, cache):
             key = func.__name__
             res = await cache.get(key, (args, kwargs))
             if res:
-                print('using cache: {}'.format(res))
+                print(f'using cache: {res}')
             else:
                 print('cache miss')
                 res = func(*args, **kwargs)

@@ -8,11 +8,7 @@ def parse_georadius_generic(response, **options):
         # with other command arguments.
         return response
 
-    if type(response) != list:
-        response_list = [response]
-    else:
-        response_list = response
-
+    response_list = [response] if type(response) != list else response
     if not options['withdist'] and not options['withcoord']\
             and not options['withhash']:
         # just a bunch of places

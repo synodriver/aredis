@@ -97,26 +97,22 @@ https://api.mongodb.org/python/current/installation.html#osx
             self.warn(e)
             self.warn(
                 self.warning_message.format(
-                    target="The {} extension ".format(ext.name),
+                    target=f"The {ext.name} extension ",
                     comment=(
                         "The output above this warning shows how the "
                         "compilation failed."
-                    )
+                    ),
                 )
             )
 
 
 _ROOT_DIR = pathlib.Path(__file__).parent
 
-with open(str(_ROOT_DIR / 'README.rst')) as f:
-    long_description = f.read()
-
+long_description = pathlib.Path(str(_ROOT_DIR / 'README.rst')).read_text()
 with open(str(_ROOT_DIR / 'aredis' / '__init__.py')) as f:
     str_regex = r"['\"]([^'\"]*)['\"]"
     try:
-        version = re.findall(
-            r"^__version__ = {}$".format(str_regex), f.read(), re.MULTILINE
-        )[0]
+        version = re.findall(f"^__version__ = {str_regex}$", f.read(), re.MULTILINE)[0]
     except IndexError:
         raise RuntimeError("Unable to find version in __init__.py")
 

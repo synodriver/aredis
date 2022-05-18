@@ -212,11 +212,10 @@ class KeysCommandMixin:
             pieces.append(b('STORE'))
             pieces.append(store)
 
-        if groups:
-            if not get or isinstance(get, str) or len(get) < 2:
-                raise DataError('when using "groups" the "get" argument '
-                                'must be specified and contain at least '
-                                'two keys')
+        if groups and (not get or isinstance(get, str) or len(get) < 2):
+            raise DataError('when using "groups" the "get" argument '
+                            'must be specified and contain at least '
+                            'two keys')
 
         options = {'groups': len(get) if groups else None}
         return await self.execute_command('SORT', *pieces, **options)
@@ -339,7 +338,4 @@ class ClusterKeysCommandMixin(KeysCommandMixin):
 
             Operation is no longer atomic.
         """
-        if not await self.exists(dst):
-            return await self.rename(src, dst)
-
-        return False
+        return False if await self.exists(dst) else await self.rename(src, dst)

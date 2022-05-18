@@ -62,8 +62,7 @@ class NodeManager:
                 return node
 
     def all_nodes(self):
-        for node in self.nodes.values():
-            yield node
+        yield from self.nodes.values()
 
     def all_masters(self):
         for node in self.nodes.values():
@@ -128,8 +127,6 @@ class NodeManager:
             except Exception:
                 raise RedisClusterException('ERROR sending "cluster slots" command to redis server: {0}'.format(node))
 
-            all_slots_covered = True
-
             # If there's only one server in the cluster, its ``host`` is ''
             # Fix it to the host in startup_nodes
             if len(cluster_slots) == 1 and len(self.startup_nodes) == 1:
@@ -156,16 +153,14 @@ class NodeManager:
                             self.set_node_name(slave_node)
                             nodes_cache[slave_node['name']] = slave_node
                             tmp_slots[i].append(slave_node)
-                    else:
-                        # Validate that 2 nodes want to use the same slot cache setup
-                        if tmp_slots[i][0]['name'] != node['name']:
-                            disagreements.append('{0} vs {1} on slot: {2}'.format(
-                                tmp_slots[i][0]['name'], node['name'], i),
-                            )
+                    elif tmp_slots[i][0]['name'] != node['name']:
+                        disagreements.append('{0} vs {1} on slot: {2}'.format(
+                            tmp_slots[i][0]['name'], node['name'], i),
+                        )
 
-                            if len(disagreements) > 5:
-                                raise RedisClusterException('startup_nodes could not agree on a valid slots cache. {0}'
-                                                            .format(', '.join(disagreements)))
+                        if len(disagreements) > 5:
+                            raise RedisClusterException('startup_nodes could not agree on a valid slots cache. {0}'
+                                                        .format(', '.join(disagreements)))
 
                 self.populate_startup_nodes()
                 self.refresh_table_asap = False
@@ -175,10 +170,10 @@ class NodeManager:
             else:
                 need_full_slots_coverage = await self.cluster_require_full_coverage(nodes_cache)
 
-            # Validate if all slots are covered or if we should try next startup node
-            for i in range(0, self.RedisClusterHashSlots):
-                if i not in tmp_slots and need_full_slots_coverage:
-                    all_slots_covered = False
+            all_slots_covered = not any(
+                i not in tmp_slots and need_full_slots_coverage
+                for i in range(self.RedisClusterHashSlots)
+            )
 
             if all_slots_covered:
                 # All slots are covered and application can continue to execute
@@ -198,7 +193,7 @@ class NodeManager:
         self.reinitialize_counter = 0
 
     async def increment_reinitialize_counter(self, ct=1):
-        for i in range(1, ct):
+        for _ in range(1, ct):
             self.reinitialize_counter += 1
             if self.reinitialize_counter % self.reinitialize_steps == 0:
                 await self.initialize()

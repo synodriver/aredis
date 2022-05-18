@@ -40,7 +40,7 @@ def _get_client(cls=None, **kwargs):
         }],
         'stream_timeout': 10,
     }
-    params.update(kwargs)
+    params |= kwargs
     return cls(**params)
 
 
@@ -87,7 +87,7 @@ def o(request, *args, **kwargs):
     Create a StrictRedisCluster instance with decode_responses set to True.
     """
     params = {'decode_responses': True}
-    params.update(kwargs)
+    params |= kwargs
     return _get_client(cls=StrictRedisCluster, **params)
 
 
@@ -105,7 +105,7 @@ def ro(request, *args, **kwargs):
     Create a StrictRedisCluster instance with readonly mode
     """
     params = {'readonly': True}
-    params.update(kwargs)
+    params |= kwargs
     return _get_client(cls=StrictRedisCluster, **params)
 
 

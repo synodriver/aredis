@@ -45,8 +45,8 @@ def test_keyslot():
     assert n.keyslot(1337.1234) == n.keyslot("1337.1234")
     assert n.keyslot(1337) == n.keyslot("1337")
     assert n.keyslot(b"abc") == n.keyslot("abc")
-    assert n.keyslot("abc") == n.keyslot(str("abc"))
-    assert n.keyslot(str("abc")) == n.keyslot(b"abc")
+    assert n.keyslot("abc") == n.keyslot("abc")
+    assert n.keyslot("abc") == n.keyslot(b"abc")
 
 
 @pytest.mark.asyncio
@@ -247,9 +247,9 @@ async def test_all_nodes():
     n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7000}])
     await n.initialize()
 
-    nodes = [node for node in n.nodes.values()]
+    nodes = list(n.nodes.values())
 
-    for i, node in enumerate(n.all_nodes()):
+    for node in n.all_nodes():
         assert node in nodes
 
 
@@ -276,7 +276,7 @@ def test_random_startup_node():
     n = NodeManager(startup_nodes=s)
     random_node = n.random_startup_node()
 
-    for i in range(0, 5):
+    for _ in range(5):
         assert random_node in s
 
 
@@ -322,8 +322,7 @@ async def test_reset():
         def __await__(self):
             future = asyncio.Future(loop=asyncio.get_event_loop())
             future.set_result(self)
-            result = yield from future
-            return result
+            return (yield from future)
 
     n = NodeManager(startup_nodes=[{}])
     n.initialize = AsyncMock()

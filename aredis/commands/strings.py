@@ -99,8 +99,7 @@ class StringsCommandMixin:
         if start is not None and end is not None:
             params.append(start)
             params.append(end)
-        elif (start is not None and end is None) or \
-                (end is not None and start is None):
+        elif start is not None or end is not None:
             raise RedisError("Both start and end must be specified")
         return await self.execute_command('BITCOUNT', *params)
 
@@ -279,7 +278,7 @@ class StringsCommandMixin:
         Flag the ``offset`` in ``name`` as ``value``. Returns a boolean
         indicating the previous value of ``offset``.
         """
-        value = value and 1 or 0
+        value = 1 if value else 0
         return await self.execute_command('SETBIT', name, offset, value)
 
     async def setex(self, name, time, value):

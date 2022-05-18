@@ -250,7 +250,7 @@ class TestReadOnlyConnectionPool:
 
         expected_ports = set(range(7000, 7006))
         actual_ports = set()
-        for i in range(0, 16383):
+        for i in range(16383):
             node = pool.get_node_by_slot(i)
             actual_ports.add(node['port'])
         assert actual_ports == expected_ports
